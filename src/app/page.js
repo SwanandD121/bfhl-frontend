@@ -1,73 +1,132 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import axios from 'axios';
-import Select from 'react-select';
+import React, { useState, useEffect } from 'react';
 
-const API_URL = 'https://bfhl-api-7xub.onrender.com'; // Replace with your actual API URL
-
-export default function Home() {
-  const [input, setInput] = useState('');
-  const [response, setResponse] = useState(null);
+const InputForm = ({ onSubmit }) => {
+  const [jsonInput, setJsonInput] = useState('');
   const [error, setError] = useState('');
-  const [selectedOptions, setSelectedOptions] = useState([]);
 
-  const options = [
-    { value: 'alphabets', label: 'Alphabets' },
-    { value: 'numbers', label: 'Numbers' },
-    { value: 'highest_lowercase_alphabet', label: 'Highest lowercase alphabet' },
-  ];
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
-    setResponse(null);
-
     try {
-      const parsedInput = JSON.parse(input);
-      const res = await axios.post(API_URL, parsedInput);
-      setResponse(res.data);
-    } catch (err) {
-      setError('Invalid JSON input or API error');
+      const parsedJson = JSON.parse(jsonInput);
+      if (Array.isArray(parsedJson.data)) {
+        setError('');
+        onSubmit(parsedJson);
+      } else {
+        setError('JSON must contain a "data" array.');
+      }
+    } catch (e) {
+      setError('Invalid JSON format.');
     }
   };
 
-  const renderResponse = () => {
-    if (!response) return null;
+  return (
+    <div>
+      <form onSubmit={handleSubmit}>
+        <textarea
+          value={jsonInput}
+          onChange={(e) => setJsonInput(e.target.value)}
+          rows="10"
+          cols="50"
+          placeholder='Enter JSON: { "data": ["A", "1", "b", "5"] }'
+        />
+        <button type="submit">Submit</button>
+      </form>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+    </div>
+  );
+};
 
-    return selectedOptions.map((option) => (
-      <div key={option.value}>
-        <h3>{option.label}</h3>
-        <p>{JSON.stringify(response[option.value])}</p>
-      </div>
-    ));
+const MultiSelectDropdown = ({ options, selectedOptions, onChange }) => {
+  const handleChange = (e) => {
+    const value = e.target.value;
+    if (selectedOptions.includes(value)) {
+      onChange(selectedOptions.filter(option => option !== value));
+    } else {
+      onChange([...selectedOptions, value]);
+    }
   };
 
   return (
-    <main className="p-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">BFHL API Frontend</h1>
-      <form onSubmit={handleSubmit} className="mb-4">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          className="w-full p-2 border rounded"
-          rows="4"
-          placeholder='Enter JSON (e.g., { "data": ["A","C","z"] })'
-        ></textarea>
-        <button type="submit" className="mt-2 px-4 py-2 bg-blue-500 text-white rounded">
-          Submit
-        </button>
-      </form>
-      {error && <p className="text-red-500">{error}</p>}
-      {response && (
-        <Select
-          isMulti
-          options={options}
-          onChange={setSelectedOptions}
-          className="mb-4"
-        />
-      )}
-      {renderResponse()}
-    </main>
+    <div>
+      <label>Select Filters: </label>
+      <select multiple value={selectedOptions} onChange={handleChange}>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
   );
-}
+};
+
+const FilteredResponse = ({ response, filters }) => {
+  const { numbers, alphabets, highest_lowercase_alphabet } = response;
+
+  return (
+    <div>
+      {filters.includes('Numbers') && (
+        <div>
+          <strong>Numbers:</strong> {numbers.join(', ')}
+        </div>
+      )}
+      {filters.includes('Alphabets') && (
+        <div>
+          <strong>Alphabets:</strong> {alphabets.join(', ')}
+        </div>
+      )}
+      {filters.includes('Highest Lowercase Alphabet') && (
+        <div>
+          <strong>Highest Lowercase Alphabet:</strong> {highest_lowercase_alphabet.join(', ')}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const App = () => {
+  const [response, setResponse] = useState(null);
+  const [filters, setFilters] = useState([]);
+
+  useEffect(() => {
+    document.title = '21BCE11281'; // Replace with your actual roll number
+  }, []);
+
+  const handleSubmit = async (jsonInput) => {
+    try {
+      const res = await fetch('https://backend-api-mc3i.onrender.com/bfhl', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(jsonInput),
+      });
+
+      const data = await res.json();
+      setResponse(data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  return (
+    <div>
+      <h1>BFHL Frontend</h1>
+      <InputForm onSubmit={handleSubmit} />
+      {response && (
+        <>
+          <MultiSelectDropdown
+            options={['Numbers', 'Alphabets', 'Highest Lowercase Alphabet']}
+            selectedOptions={filters}
+            onChange={setFilters}
+          />
+          <FilteredResponse response={response} filters={filters} />
+        </>
+      )}
+    </div>
+  );
+};
+
+export default App;
