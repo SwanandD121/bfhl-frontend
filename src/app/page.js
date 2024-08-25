@@ -4,7 +4,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 
-const API_URL = 'https://bfhl-api-7xub.onrender.com/api/bfhl'; // Replace with your actual API URL
+const API_URL = 'https://bfhl-api-7xub.onrender.com'; // Replace with your actual API URL
 
 export default function Home() {
   const [input, setInput] = useState('');
